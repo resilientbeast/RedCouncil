@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verdict;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Docket stamp used for the case ID in the header, and — larger — for the
+     final verdict. This is the design's one signature element. */
+  .docket-stamp {
+    @apply inline-block border-2 rounded-sm px-3 py-1 font-mono text-sm tracking-widest uppercase;
+    transform: rotate(-2deg);
+  }
+
+  /* Redline marks used in the debate transcript to show a rebuttal touching
+     an earlier claim — evokes case-file markup, not a chat bubble. */
+  .redline-strike {
+    text-decoration: line-through;
+    text-decoration-color: theme("colors.verdict");
+    text-decoration-thickness: 1.5px;
+  }
+}
