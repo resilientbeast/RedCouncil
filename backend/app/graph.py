@@ -147,6 +147,12 @@ async def node_round_2_fanout(state: CouncilState) -> dict:
 
     existing_conflicts = state.get("conflicts", [])
     seen_pairs: set[frozenset[AgentRole]] = set()
+
+    # Seed seen_pairs with all Round 1 pairs so a Round 2 rebuttal between
+    # the same two agents doesn't double-count that pair across rounds.
+    for c in existing_conflicts:
+        seen_pairs.add(frozenset({c.agent_a, c.agent_b}))
+
     rebuttal_conflicts: list[DetectedConflict] = []
     for role, out in round_2_outputs.items():
         for rebutted_role in out.rebuts:
@@ -165,8 +171,10 @@ async def node_round_2_fanout(state: CouncilState) -> dict:
                     delta_severity=0,
                 )
             )
+    # Round 1 lexical conflicts that didn't overlap with any Round 2 pair
+    # are still carried forward so the report has their topic data.
     all_conflicts = existing_conflicts + rebuttal_conflicts
-    total_conflict_count = len(all_conflicts)
+    total_conflict_count = len(seen_pairs)
 
     events.append(_emit("conflict_detected", {"count": total_conflict_count}))
 

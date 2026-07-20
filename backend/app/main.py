@@ -249,7 +249,7 @@ async def get_decision_state(decision_id: str, user_id: str = Depends(verify_cle
         "is_paused": bool(state_snapshot.next),
         "round_1_outputs": values.get("round_1_outputs", {}),
         "round_2_outputs": values.get("round_2_outputs", {}),
-        "conflict_count": values.get("conflict_count") or len(values.get("conflicts", [])),
+        "conflict_count": values.get("conflict_count") if "conflict_count" in values else len(values.get("conflicts", [])),
         "report": values.get("report")
     }
 
