@@ -15,13 +15,14 @@ from __future__ import annotations
 
 import asyncio
 import time
+import uuid
 
 from langgraph.graph import END, StateGraph
 from langgraph.checkpoint.memory import MemorySaver
 
 from app.agents.council import run_adversarial_agent, run_baseline, run_synthesizer
 from app.conflict_detection import compute_categories_missed_by_baseline, count_distinct_topics, detect_conflicts
-from app.models import AgentOutput, AgentRole, BaselineComparison
+from app.models import AgentOutput, AgentRole, BaselineComparison, DetectedConflict
 from app.security import validate_decision_text
 from app.state import CouncilState
 
@@ -96,6 +97,7 @@ async def node_detect_conflicts(state: CouncilState) -> dict:
     conflicts = detect_conflicts(state["round_1_outputs"])
     return {
         "conflicts": conflicts,
+        "conflict_count": len(conflicts),
         "events": [_emit("conflict_detected", {"count": len(conflicts)})]
     }
 
@@ -142,9 +144,36 @@ async def node_round_2_fanout(state: CouncilState) -> dict:
     for role, out, local_events in results:
         round_2_outputs[role.value] = out
         events.extend(local_events)
-        
+
+    existing_conflicts = state.get("conflicts", [])
+    seen_pairs: set[frozenset[AgentRole]] = set()
+    rebuttal_conflicts: list[DetectedConflict] = []
+    for role, out in round_2_outputs.items():
+        for rebutted_role in out.rebuts:
+            pair = frozenset({out.agent, rebutted_role})
+            if pair in seen_pairs:
+                continue
+            seen_pairs.add(pair)
+            rebuttal_conflicts.append(
+                DetectedConflict(
+                    conflict_id=str(uuid.uuid4())[:8],
+                    agent_a=out.agent,
+                    agent_b=rebutted_role,
+                    topic=f"{out.agent.value} rebuts {rebutted_role.value}",
+                    agent_a_position=out.overall_position,
+                    agent_b_position=round_1.get(rebutted_role.value, out).overall_position,
+                    delta_severity=0,
+                )
+            )
+    all_conflicts = existing_conflicts + rebuttal_conflicts
+    total_conflict_count = len(all_conflicts)
+
+    events.append(_emit("conflict_detected", {"count": total_conflict_count}))
+
     return {
         "round_2_outputs": round_2_outputs,
+        "conflicts": all_conflicts,
+        "conflict_count": total_conflict_count,
         "events": events
     }
 

@@ -60,12 +60,15 @@ _STOPWORDS = {
 _POSITIVE_WORDS = {
     "increase", "increases", "grow", "growth", "opportunity", "gain", "benefit",
     "benefits", "improve", "improves", "revenue", "support", "supports", "upside",
-    "strategic", "advantage", "manageable",
+    "strategic", "advantage", "manageable", "save", "savings", "reduce",
+    "efficient", "efficiency", "streamline", "consolidate", "consolidation",
 }
 _NEGATIVE_WORDS = {
     "risk", "risks", "churn", "violate", "violation", "burden", "complex",
     "friction", "confusion", "loss", "decrease", "decreases", "concern", "concerns",
     "exposure", "debt", "delay", "fail", "failure", "unpredictable", "undermine",
+    "disruption", "disrupt", "interruption", "interrupt", "outage", "downtime",
+    "costly", "liability", "noncompliance", "violates",
 }
 
 

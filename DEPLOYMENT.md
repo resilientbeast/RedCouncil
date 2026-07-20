@@ -101,7 +101,6 @@ RedCouncil uses OSS to store original uploaded files permanently.
 
 ### Clone the Repository
 ```bash
-cd /opt
 sudo git clone https://github.com/your-org/redcouncil.git
 sudo chown -R $USER:$USER redcouncil
 cd redcouncil
@@ -159,7 +158,7 @@ npm install
 cp .env.example .env
 nano .env
 ```
-Ensure `VITE_API_URL` points to your domain (e.g., `https://yourdomain.com/api`).
+Ensure `VITE_API_BASE` points to your domain without a trailing slash (e.g., `https://yourdomain.com`), or leave it completely blank (`VITE_API_BASE=`) if your frontend and backend share the exact same domain.
 
 3. Build the frontend:
 ```bash
@@ -193,7 +192,7 @@ server {
 
     # Proxy API requests to FastAPI backend
     location /api/ {
-        proxy_pass http://127.0.0.1:8000/;
+        proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

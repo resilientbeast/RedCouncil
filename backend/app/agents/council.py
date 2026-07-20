@@ -165,33 +165,35 @@ async def run_synthesizer(
     # and TechDebt's top-severity findings from the report entirely. The
     # prompt already asks for "typically 4-8" vulnerabilities, but a soft
     # instruction alone didn't hold up against messy real input — this
-    # checks compliance directly and gives the model exactly one bounded
-    # chance to fix it, the same retry-once pattern qwen_client.py uses for
-    # schema validation failures.
+    # checks compliance directly and bounded-retries for coverage, the
+    # same pattern qwen_client.py uses for schema validation failures.
     missing_roles = check_synthesis_coverage(round_1_outputs, round_2_outputs, report)
-    if missing_roles:
-        correction = (
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        if not missing_roles:
+            break
+        retry_correction = (
             f"{user_content}\n\n"
             "Your previous report did not include a distinct vulnerability covering these "
-            f"mandates, even though each raised a finding with severity >= 7: {', '.join(missing_roles)}. "
+            f"mandates: {', '.join(missing_roles)}. "
             "Revise your report: either add a distinct vulnerability for each missing mandate's "
             "top concern, or fold it into an existing vulnerability and add that mandate's role to "
             "raised_by or contested_by so it isn't silently dropped from the report."
         )
         retried_report, _latency_ms = await call_agent(
             system_prompt=SYNTHESIZER_PROMPT,
-            user_content=correction,
+            user_content=retry_correction,
             output_schema=VulnerabilityReport,
             temperature=0.2,
         )
         still_missing = check_synthesis_coverage(round_1_outputs, round_2_outputs, retried_report)
-        logger.info("Synthesis coverage retry: missing=%s -> still_missing=%s", missing_roles, still_missing)
-        # Only take the retry if it strictly improved coverage — a retry
-        # that doesn't help could still degrade report quality by chasing
-        # an instruction the model isn't going to follow; keep the original
-        # in that case rather than risk a worse report either way.
-        if len(still_missing) < len(missing_roles):
+        logger.info(
+            "Synthesis coverage retry attempt %d/%d: missing=%s -> still_missing=%s",
+            attempt, max_retries, missing_roles, still_missing,
+        )
+        if len(still_missing) <= len(missing_roles):
             report = retried_report
+            missing_roles = still_missing
 
     # Deterministic correction, not another LLM call. The Synthesizer's own
     # prompt rule states "red_flags must list every vulnerability with
@@ -221,12 +223,12 @@ def check_synthesis_coverage(
     round_1_outputs: dict[str, AgentOutput],
     round_2_outputs: dict[str, AgentOutput],
     report: VulnerabilityReport,
-    severity_threshold: int = 7,
+    severity_threshold: int = 1,
 ) -> list[str]:
     """
     Returns agent roles that raised a finding scoring >= severity_threshold
     in either round but don't appear in raised_by or contested_by of ANY
-    vulnerability in the final report — i.e. mandates whose top concern was
+    vulnerability in the final report — i.e. mandates whose perspective was
     silently dropped during synthesis rather than merged or contested.
     """
     high_severity_roles: set[AgentRole] = set()
